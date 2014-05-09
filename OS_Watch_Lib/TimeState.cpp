@@ -32,6 +32,12 @@ static byte TIME_STATE_APP_ID = 0x02;
 static byte TIME_STATE_APP_ACTION_1 = 0x00;
 static byte TIME_STATE_APP_ACTION_2 = 0x01;
 
+static boolean isWaitingForResponse = false;
+static int millisSinceLastUpdate = 0;
+
+static byte cachedAction;
+static uint8_t cashedDataPacket[6];
+
 TimeState::TimeState(Adafruit_SSD1306 *screen) : BaseState(_screen){
   STATE_ID = "TIMESTATE";
   _screen =  screen;
@@ -48,15 +54,30 @@ void TimeState::render(){
 
 
 void TimeState::updateDisplay(long lastUpdateTime){
-  
+  if(isWaitingForResponse)
+    millisSinceLastUpdate+=lastUpdateTime;
+  if(millisSinceLastUpdate>=1000)
+  {
+      Serial.println("Re sending lost data packet");
+      millisSinceLastUpdate = 0;
+      getBluetoothManager().transmitMessage(TIME_STATE_APP_ID, cachedAction, cashedDataPacket);
+  }
 }
 
 
 void TimeState::sync(){
   if(getBluetoothManager().getState() == 4 || getBluetoothManager().getState() == 5)
   {
+      millisSinceLastUpdate = 0;
       uint8_t length = (byte) 6;
       uint8_t data_packet[6] = {length,100,100,100,100,254};
+      cashedDataPacket[0] = length;
+      cashedDataPacket[1] = 100;
+      cashedDataPacket[2] = 100;
+      cashedDataPacket[3] = 100;
+      cashedDataPacket[4] = 100;
+      cashedDataPacket[5] = 254;
+      cachedAction = TIME_STATE_APP_ACTION_1;
       getBluetoothManager().transmitMessage(TIME_STATE_APP_ID, TIME_STATE_APP_ACTION_1, data_packet);
   }
   else
@@ -89,8 +110,8 @@ void TimeState::renderClockType1(){
     
   if(hour_time<=9)
   {
-    String hrDisp =  " " + hour_time;
-    _screen->print(hrDisp);
+    _screen->setCursor(25, 0);
+    _screen->print(hour_time);
   }
   else
     _screen->print(hour_time);
@@ -99,12 +120,16 @@ void TimeState::renderClockType1(){
   _screen->print(":");
   _screen->setCursor(70, 0);
   int8_t minute_time = minute();
+  
   if(minute_time<=9){ 
-    String minDisp =  "0" + minute_time;
-    _screen->print(minDisp);
+    _screen->print("0");
+    _screen->setCursor(95, 0);
+    _screen->print(minute_time);
   }
   else
-    _screen->print(minute());
+    _screen->print(minute_time);
+    
+    
   _screen->setTextSize(2);
 
   char *wkdy[7] = {"SUN", "MON", "TUE", "WED", "THR", "FRI", "SAT"};
@@ -128,10 +153,18 @@ void TimeState::btnInterruptAction(boolean isDimmed){
       else
       {
         
+        isWaitingForResponse = true;
         uint8_t length = (byte) 6;
         uint8_t data_packet[6] = {length,100,99,98,97,254};
-        getBluetoothManager().transmitMessage(TIME_STATE_APP_ID, TIME_STATE_APP_ACTION_1, data_packet);
         
+        cashedDataPacket[0] = length;
+        cashedDataPacket[1] = 100;
+        cashedDataPacket[2] = 99;
+        cashedDataPacket[3] = 98;
+        cashedDataPacket[4] = 97;
+        cashedDataPacket[5] = 254;
+        cachedAction = TIME_STATE_APP_ACTION_1;
+        getBluetoothManager().transmitMessage(TIME_STATE_APP_ID, TIME_STATE_APP_ACTION_1, data_packet);
       }
 }
 
@@ -152,7 +185,7 @@ void TimeState::displayPopup(){
 
 
 void TimeState::incomingMessageCallback(const struct ble_msg_attributes_value_evt_t *msg) {
-    Serial.println("Reciecved message with Callback successfully");
+    isWaitingForResponse = false;
     if(msg -> value.data[0] == 0x02)//Time return
     {
       byte b[4] = {

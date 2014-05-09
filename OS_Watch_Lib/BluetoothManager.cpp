@@ -53,6 +53,7 @@ limitations under the License.
 static uint8_t ble_state = BLE_STATE_STANDBY;
 static uint8_t ble_encrypted = 0;  // 0 = not encrypted, otherwise = encrypted
 static uint8_t ble_bonding = 0xFF; // 0xFF = no bonding, otherwise = bonding handle
+static boolean shouldDisplayBLEState = false;
 
 // ================================================================
 // HARDWARE CONNECTIONS AND GATT STRUCTURE SETUP
@@ -142,30 +143,39 @@ void BluetoothManager::setBLEEventHandle(bleMessageCallback f){
 
 
 void BluetoothManager::bleStateIndication(){
-   // blink Arduino LED based on state:
-  //  - solid = STANDBY
-  //  - 1 pulse per second = ADVERTISING
-  //  - 2 pulses per second = CONNECTED_SLAVE
-  //  - 3 pulses per second = CONNECTED_SLAVE with encryption
-  uint16_t slice = millis() % 1000;
-  if (ble_state == BLE_STATE_STANDBY) {
-    digitalWrite(LED_1_PIN, HIGH);
-  } 
-  else if (ble_state == BLE_STATE_ADVERTISING) {
-    digitalWrite(LED_1_PIN, slice < 100);
-  } 
-  else if (ble_state == BLE_STATE_CONNECTED_SLAVE) {
-    if (!ble_encrypted) {
-      digitalWrite(LED_1_PIN, slice < 100 || (slice > 200 && slice < 300));
+  if(shouldDisplayBLEState)
+  {
+     // blink Arduino LED based on state:
+    //  - solid = STANDBY
+    //  - 1 pulse per second = ADVERTISING
+    //  - 2 pulses per second = CONNECTED_SLAVE
+    //  - 3 pulses per second = CONNECTED_SLAVE with encryption
+    uint16_t slice = millis() % 1000;
+    if (ble_state == BLE_STATE_STANDBY) {
+      digitalWrite(LED_1_PIN, HIGH);
     } 
-    else {
-      digitalWrite(LED_1_PIN, slice < 100 || (slice > 200 && slice < 300) || (slice > 400 && slice < 500));
+    else if (ble_state == BLE_STATE_ADVERTISING) {
+      digitalWrite(LED_1_PIN, slice < 100);
+    } 
+    else if (ble_state == BLE_STATE_CONNECTED_SLAVE) {
+      if (!ble_encrypted) {
+        digitalWrite(LED_1_PIN, slice < 100 || (slice > 200 && slice < 300));
+      } 
+      else {
+        digitalWrite(LED_1_PIN, slice < 100 || (slice > 200 && slice < 300) || (slice > 400 && slice < 500));
+      }
     }
   }
 }
 
-int BluetoothManager::getState(){
+uint8_t BluetoothManager::getState(){
    return ble_state;
+}
+
+void BluetoothManager::setBLEIndicatorFlag(boolean shouldDisplay){
+   shouldDisplayBLEState = shouldDisplay;
+   if(!shouldDisplay)
+     digitalWrite(LED_1_PIN, LOW);
 }
 
 void BluetoothManager::my_ble_evt_system_boot(const ble_msg_system_boot_evt_t *msg){
@@ -297,7 +307,7 @@ void BluetoothManager::transmitMessage(byte appId, byte appAction, const uint8_t
     output_data[i+2] = data_packet[i];
   }
   
-  Serial.print("Outgoing Message: ");
+  Serial.print("OUTGOING - ");
   Serial.println(output_data[0]);
   Serial.print("{ ");
 
@@ -305,7 +315,7 @@ void BluetoothManager::transmitMessage(byte appId, byte appAction, const uint8_t
   Serial.print(output_data[i]);
   Serial.print(" ");
   }
-  Serial.print("}");
+  Serial.println("}");
   
   
   ble112.ble_cmd_attributes_write(GATT_HANDLE_C_TX_DATA, 0, output_data[0], output_data);

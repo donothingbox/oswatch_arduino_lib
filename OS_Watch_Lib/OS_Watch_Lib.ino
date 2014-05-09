@@ -92,6 +92,13 @@ static BaseState *activeState;
 static MenuState menuState(&display);
 static TimeState timeState(&display);
 
+#define TIME_TO_INDICATE_BLE_STATE_CHANGE  10000
+
+
+static uint8_t lastRecordedBLEState = 0;
+static int timeDisplayingStatusChange = 0;
+static boolean bleStateCountdownActive = false;
+
 // ================================================================
 // Clock and timer configs
 // ================================================================
@@ -136,6 +143,8 @@ void setup() {
   activeState->setStateChangeRequestCallback(stateChangeRequested);
   activeState->setBluetoothManager(&bleManager);
   activeState->render();
+  
+
 }
 
 // main application loop
@@ -152,6 +161,28 @@ void loop() {
   bleManager.checkActivity();
   //Really useful for debugging BLE, but not required
   bleManager.bleStateIndication();
+  
+  
+  
+  uint8_t ble_state = bleManager.getState();
+  if(ble_state != lastRecordedBLEState)
+  {
+    //begin new countdown
+    bleStateCountdownActive = true;
+    lastRecordedBLEState = ble_state;
+    timeDisplayingStatusChange = 0;
+    bleManager.setBLEIndicatorFlag(true);
+  }
+  
+  if(bleStateCountdownActive)
+  {
+    timeDisplayingStatusChange+=timeDifference;
+    if(timeDisplayingStatusChange>=TIME_TO_INDICATE_BLE_STATE_CHANGE)
+    {
+      bleManager.setBLEIndicatorFlag(false);
+    }
+  }
+  
   
   
   //TODO This is really hacky, and NEEDS to be changed
@@ -176,6 +207,14 @@ void loop() {
 // ================================================================
 
 void incomingMessageCallback(const struct ble_msg_attributes_value_evt_t *msg) {
+   Serial.println("INCOMING - ");
+   Serial.print("{ ");
+   Serial.print(msg -> value.data[0]);
+   Serial.print(" : ");
+   Serial.print(msg -> value.data[1]);
+   Serial.print(" : ");
+   Serial.print(msg -> value.data[2]);
+   Serial.println(" }");
     activeState->incomingMessageCallback(msg);
 }
 

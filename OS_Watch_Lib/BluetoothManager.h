@@ -53,7 +53,8 @@ class BluetoothManager{
     static void onTimeout();
     static void onIdle();
     static void onBusy();
-    int getState();
+    static void setBLEIndicatorFlag(boolean shouldDisplay);
+    static uint8_t getState();
     void transmitMessage(byte appId, byte appAction, const uint8_t *data_packet);
     static void my_ble_evt_attributes_value(const struct ble_msg_attributes_value_evt_t *msg);
     static void my_ble_evt_connection_disconnect(const struct ble_msg_connection_disconnected_evt_t *msg);

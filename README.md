@@ -6,7 +6,7 @@ On the Arduino side, these lib files represent the foundation of running the OSW
 
 NOTES:
 
-1.) NEAR FUTURE PLANSE - Currently both Library files and the project itself live in the same GitHub project, and the same Arduino folder. This will change in the near future one the Base Arduino OSWatch Lib is stable. 
+1.) NEAR FUTURE PLANS - Currently both Library files and the project itself live in the same GitHub project, and the same Arduino folder. This will change in the near future one the Base Arduino OSWatch Lib is stable. 
 
 The Current existing files that will move to a Abstract Library directory are the following:
 

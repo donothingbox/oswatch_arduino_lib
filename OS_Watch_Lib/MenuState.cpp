@@ -180,7 +180,7 @@ int MenuState::getSelectedMenuAction(int id){
 }
 
 void MenuState::incomingMessageCallback(const struct ble_msg_attributes_value_evt_t *msg) {
-    Serial.println("Reciecved message with Callback successfully");
+  
 }
 
 void MenuState::updateDisplay(long lastUpdateTime){

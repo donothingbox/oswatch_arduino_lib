@@ -303,6 +303,7 @@ void BluetoothManager::onBusy(){
 }
 
 void BluetoothManager::transmitMessage(byte appId, byte appAction, const uint8_t *data_packet){
+  digitalWrite(LED_2_PIN, LOW);
   uint8_t output_data[data_packet[0]+2];
   output_data[0] = data_packet[0]+2;
   output_data[1] = appId;

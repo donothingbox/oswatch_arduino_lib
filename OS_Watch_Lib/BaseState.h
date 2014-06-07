@@ -74,6 +74,7 @@ class BaseState{
     void integerToBytes(long val, byte b[4]);
     long bytesToInteger(byte b[4]);
     long byteToInteger(byte b);
+    int freeRam();
 
 
     

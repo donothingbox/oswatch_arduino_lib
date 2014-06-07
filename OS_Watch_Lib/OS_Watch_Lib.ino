@@ -87,8 +87,7 @@ uint8_t button_matrix_ids[4] = {
 #define BLE_HOST_PIN  3 //Not applicable in this design, would need to be connected to an Interrupt pin. Future designs may share Physical button interrupts with This
 // If using the *_hwake15 project firmware:
 #define BLE_WAKEUP_PIN  5  // BLE wake-up pin
-#define LED_1_PIN  23
-#define LED_2_PIN  22
+
 
 BluetoothManager bleManager(BLE_RESET_PIN, BLE_HOST_PIN, BLE_WAKEUP_PIN, LED_1_PIN, LED_2_PIN);
 
@@ -136,7 +135,7 @@ void setup() {
   pinMode(MOTOR_PIN, OUTPUT);
   digitalWrite(MOTOR_PIN, LOW);
   pinMode(LED_1_PIN, OUTPUT);
-  digitalWrite(LED_1_PIN, LOW);
+  digitalWrite(LED_1_PIN, HIGH);
   pinMode(LED_2_PIN, OUTPUT);
   digitalWrite(LED_2_PIN, LOW);
   //Init Buttons
@@ -160,10 +159,6 @@ void setup() {
 
 // main application loop
 void loop() {
-  
-  
-
-  
   //First, update Clock
   new_time = millis();
   long timeDifference = new_time - old_time;
@@ -176,9 +171,7 @@ void loop() {
   bleManager.checkActivity();
   //Really useful for debugging BLE, but not required
   bleManager.bleStateIndication();
-  
-  
-  
+
   uint8_t ble_state = bleManager.getState();
   if(ble_state != lastRecordedBLEState)
   {
@@ -222,7 +215,8 @@ void loop() {
 // ================================================================
 
 void incomingMessageCallback(const struct ble_msg_attributes_value_evt_t *msg) {
-   //Serial.println("INCOMING - ");
+   digitalWrite(LED_2_PIN, LOW);
+   Serial.println("INCOMING - ");
    Serial.print("{");
    
    
@@ -230,7 +224,7 @@ void incomingMessageCallback(const struct ble_msg_attributes_value_evt_t *msg) {
     int incrementor = 0;
     while(test != NULL && incrementor<20){
         test = msg -> value.data[incrementor];
-        Serial.print(char(test));
+        //Serial.print(char(test));
         incrementor++;
     }
    
@@ -321,6 +315,7 @@ boolean isButtonDown(uint8_t id){
     if(btn_status == HIGH)
     {
       Serial.println("btn down");
+      displayMemory();
       countdownTillSleep = DIM_COUNTDOWN;
       display.dim(false);
       isDisplayDimmed = false;
@@ -329,6 +324,7 @@ boolean isButtonDown(uint8_t id){
     else
     {
       Serial.println("btn up");
+      displayMemory();
       countdownTillSleep = DIM_COUNTDOWN;
       display.dim(false);
       isDisplayDimmed = false;
@@ -336,5 +332,19 @@ boolean isButtonDown(uint8_t id){
     }
   }
   return false;
+}
+
+void displayMemory(){
+     Serial.print(":: :: :: :: :: FREE MEMORY: ");
+     Serial.print(freeRam());
+     Serial.println(" :: :: :: :: ::");
+}
+
+
+int freeRam() 
+{
+  extern int __heap_start, *__brkval; 
+  int v; 
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
 

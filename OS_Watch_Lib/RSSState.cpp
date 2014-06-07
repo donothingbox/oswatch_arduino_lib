@@ -24,29 +24,19 @@ limitations under the License.
   #include "BaseState.h"
 #endif
 
-static char rss0[20] = "Loading 0";
+static char rss0[50] = "Loading 0";
 static char rss0Length = 0;
-static char rss1[20] = "Loading 1";
+static char rss1[50] = "Loading 1";
 static char rss1Length = 0;
-static char rss2[20] = "Loading 2";
+static char rss2[50] = "Loading 2";
 static char rss2Length = 0;
-static char rss3[20] = "Loading 3";
+static char rss3[50] = "Loading 3";
 static char rss3Length = 0;
-static char rss4[20] = "Loading 4";
+static char rss4[50] = "Loading 4";
 static char rss4Length = 0;
-static char rss5[20] = "Loading 5";
-static char rss5Length = 0;
-static char rss6[20] = "Loading 6";
-static char rss6Length = 0;
-static char rss7[20] = "Loading 7";
-static char rss7Length = 0;
-static char rss8[20] = "Loading 8";
-static char rss8Length = 0;
-static char rss9[20] = "Loading 9";
-static char rss9Length = 0;
 
-static char* main_menu[10] = {
-  " "," ", " ", " ", " ", " ", " ", " ", " ", " "};
+static char* main_menu[5] = {
+  " "," ", " ", " ", " "};
 static int main_menu_action[9] = {
   1,2, 3, 4, 5, 6, 7, 8, 9};
 static int top_menu_id = 0;
@@ -215,7 +205,11 @@ void RSSState::btnUpAction(boolean isDimmed){
 }
 
 void RSSState::btnBackAction(boolean isDimmed){
-      _screen->clearDisplay();
+  
+     Serial.print(":: :: :: :: :: FREE MEMORY: ");
+     Serial.print(freeRam());
+     Serial.println(" :: :: :: :: ::");
+     _screen->clearDisplay();
      char *stateID = "MENUSTATE";
      makeChangeRequest(stateID);
 }
@@ -312,56 +306,30 @@ void RSSState::incomingMessageCallback(const struct ble_msg_attributes_value_evt
   
             if(currentLine == 1)
             {
-              completePhrase.toCharArray(rss0, 20);
+              completePhrase.toCharArray(rss0, 50);
               main_menu[0] = rss0;
             }
             
             else if(currentLine == 2)
             {
-              completePhrase.toCharArray(rss1, 20);
+              completePhrase.toCharArray(rss1, 50);
               main_menu[1] = rss1;
             }
              else if(currentLine == 3)
             {
-              completePhrase.toCharArray(rss2, 20);
+              completePhrase.toCharArray(rss2, 50);
               main_menu[2] = rss2;
             }   
              else if(currentLine == 4)
             {
-              completePhrase.toCharArray(rss3, 20);
+              completePhrase.toCharArray(rss3, 50);
               main_menu[3] = rss3;
-            } 
-             else if(currentLine == 5)
-            {
-              completePhrase.toCharArray(rss4, 20);
-              main_menu[4] = rss4;
-            }   
-            
-            else if(currentLine == 6)
-            {
-              completePhrase.toCharArray(rss5, 20);
-              main_menu[5] = rss5;
-            }     
-            else if(currentLine == 7)
-            {
-              completePhrase.toCharArray(rss6, 20);
-              main_menu[6] = rss6;
             }
-            else if(currentLine == 8)
+            else if(currentLine == 5)
             {
-              completePhrase.toCharArray(rss7, 20);
-              main_menu[7] = rss7;
-            }          
-             else if(currentLine == 9)
-            {
-              completePhrase.toCharArray(rss8, 20);
-              main_menu[8] = rss8;
-            }  
-            else if(currentLine == 10)
-            {
-              completePhrase.toCharArray(rss9, 20);
-              main_menu[9] = rss9;
-            }      
+              completePhrase.toCharArray(rss4, 50);
+              main_menu[4] = rss4;
+            }     
             Serial.println("::::: END OF PACKET MESSAGE :::::");
             currentLine++;
             

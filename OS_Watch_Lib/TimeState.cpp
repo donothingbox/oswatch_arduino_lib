@@ -38,6 +38,9 @@ static int millisSinceLastUpdate = 0;
 static byte cachedAction;
 static uint8_t cashedDataPacket[6];
 
+static int frameCounter = 0;
+static int frameClock = 0;
+
 TimeState::TimeState(Adafruit_SSD1306 *screen) : BaseState(_screen){
   STATE_ID = "TIMESTATE";
   _screen =  screen;
@@ -54,13 +57,30 @@ void TimeState::render(){
 
 
 void TimeState::updateDisplay(long lastUpdateTime){
-  if(isWaitingForResponse)
-    millisSinceLastUpdate+=lastUpdateTime;
-  if(millisSinceLastUpdate>=1000)
+  frameClock+=lastUpdateTime;
+  if(frameClock>=(1000/8)){
+    frameCounter++;
+    frameClock = 0;
+    if(frameCounter>7)
+      frameCounter = 0;
+  }
+  if(false)
   {
-      Serial.println("Re sending lost data packet");
-      millisSinceLastUpdate = 0;
-      getBluetoothManager().transmitMessage(TIME_STATE_APP_ID, cachedAction, cashedDataPacket);
+    
+   // _screen->clearDisplay();
+   // _screen->drawBitmap(56, 24,  wheelAnimated[frameCounter], 16, 16, 1);
+   // _screen->display();
+  }
+  else
+  {
+    if(isWaitingForResponse)
+      millisSinceLastUpdate+=lastUpdateTime;
+    if(millisSinceLastUpdate>=1000)
+    {
+        Serial.println("Re sending lost data packet");
+        millisSinceLastUpdate = 0;
+        getBluetoothManager().transmitMessage(TIME_STATE_APP_ID, cachedAction, cashedDataPacket);
+    }
   }
 }
 
@@ -110,7 +130,7 @@ void TimeState::renderClockType1(){
     
   if(hour_time<=9)
   {
-    _screen->setCursor(25, 0);
+    _screen->setCursor(30, 0);
     _screen->print(hour_time);
   }
   else
@@ -123,7 +143,7 @@ void TimeState::renderClockType1(){
   
   if(minute_time<=9){ 
     _screen->print("0");
-    _screen->setCursor(95, 0);
+    _screen->setCursor(99, 0);
     _screen->print(minute_time);
   }
   else

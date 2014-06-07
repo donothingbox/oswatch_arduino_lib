@@ -25,7 +25,7 @@ limitations under the License.
 #endif
 
 static char* main_menu[9] = {
-  "Time","E-Mail", "Twitter", "Facebook", "Reddit", "Option 6", "Option 7", "Option 8", "Option 9"};
+  "Time","Reddit", "Twitter", "Facebook", "E-Mail", "Option 6", "Option 7", "Option 8", "Option 9"};
 static int main_menu_action[9] = {
   1,2, 3, 4, 5, 6, 7, 8, 9};
 static int top_menu_id = 0;
@@ -130,6 +130,12 @@ void MenuState::btnInterruptAction(boolean isDimmed){
         {
           
           char *stateID = "TIMESTATE";
+          makeChangeRequest(stateID);
+        } 
+        if(getSelectedMenuAction(currentMenuID) == 2)
+        {
+          
+          char *stateID = "RSSSTATE";
           makeChangeRequest(stateID);
         } 
       }

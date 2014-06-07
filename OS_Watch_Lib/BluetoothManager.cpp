@@ -71,17 +71,19 @@ static bleMessageCallback messageCallback;
 
 
 static uint8_t BLE_RESET_PIN = 4; // BLE reset pin (active-low) default 4
-// - BLE P1_5 -> Arduino Digital Pin 5 (BLE host wake-up -> Arduino I/O 5)
-static uint8_t BLE_HOST_PIN = 5; //Not applicable in this design, would need to be connected to an Interrupt pin. Future designs may share Physical button interrupts with This
+
+// - BLE P1_5 -> Arduino Digital Pin 3 (BLE host wake-up -> Arduino I/O 3) This will be wired to an interrupt soon
+static uint8_t BLE_HOST_PIN = 3; 
+
 // If using the *_hwake15 project firmware:
-static uint8_t BLE_WAKEUP_PIN = 7;  // BLE wake-up pin
+static uint8_t BLE_WAKEUP_PIN = 5;  // BLE wake-up pin
 static uint8_t LED_1_PIN = 23;
 static uint8_t LED_2_PIN = 22;
 
 
-static SoftwareSerial bleSerialPort(2, 3);
+static SoftwareSerial bleSerialPort(2, 7);
 // - BLE P0_4 -> Arduino Digital Pin 2 (BLE TX -> Arduino soft RX)
-// - BLE P0_5 -> Arduino Digital Pin 3 (BLE RX -> Arduino soft TX)
+// - BLE P0_5 -> Arduino Digital Pin 7 (BLE RX -> Arduino soft TX)
 
 // create BGLib object:
 //  - use SoftwareSerial por for module comms
@@ -143,6 +145,9 @@ void BluetoothManager::setBLEEventHandle(bleMessageCallback f){
 
 
 void BluetoothManager::bleStateIndication(){
+  //Serial.print("State: ");
+   // Serial.println(ble_state);
+
   if(shouldDisplayBLEState)
   {
      // blink Arduino LED based on state:

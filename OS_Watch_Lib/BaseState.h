@@ -44,6 +44,8 @@ class BaseState{
     virtual void btnInterruptAction(boolean isDimmed);
     virtual void btnUpAction(boolean isDimmed);
     virtual void btnDownAction(boolean isDimmed);
+    virtual void btnBackAction(boolean isDimmed);
+
     //called when new BLE message is recieved
     virtual void incomingMessageCallback(const struct ble_msg_attributes_value_evt_t *msg);
 
@@ -53,18 +55,26 @@ class BaseState{
     //state change functions
     void setStateChangeRequestCallback(stateChangeCallback f);
     void makeChangeRequest(char *stateID);
+    void showLoadingWheel();
+    void hideLoadingWheel();
+    void renderLoadingWheel();
+    
+    const unsigned char getLoadingWheel();
+    
     //Bluetooth manager access
     BluetoothManager getBluetoothManager();
     void setBluetoothManager(BluetoothManager *bleManager);
     //Vars required
     Adafruit_SSD1306 *_screen;
     char *STATE_ID;
-    
+    boolean isLoading;
+    static const unsigned char *wheelAnimated[8];
     
     //Declaired helper functions
     void integerToBytes(long val, byte b[4]);
     long bytesToInteger(byte b[4]);
-    
+    long byteToInteger(byte b);
+
 
     
 };

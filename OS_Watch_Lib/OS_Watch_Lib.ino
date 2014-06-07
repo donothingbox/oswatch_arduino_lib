@@ -34,9 +34,11 @@ limitations under the License.
 
 #include "MenuState.h"
 #include "TimeState.h"
+#include "RSSState.h"
+
 
 // uncomment the following lines for debug serial output of different classes
-#define DEBUG
+//#define DEBUG
 #define BLUETOOTHMANAGER_DEBUG
 
 // ================================================================
@@ -44,6 +46,7 @@ limitations under the License.
 // ================================================================
 
 #define INTERRUPT_BTN 6   //Left Button Pin
+#define BACK_BTN      16   //Back Button Pin
 #define TOP_BTN      15   //Top Button Pin
 #define BOTTOM_BTN   14   //Bottom Button Pin
 #define MOTOR_PIN    17   //For Vibration Motor
@@ -65,14 +68,15 @@ Adafruit_SSD1306 display(OLED_DC, OLED_RESET, OLED_CS);
 // Configure BUTTONS
 // ================================================================
 
-boolean button_matrix_status[3] = {
+boolean button_matrix_status[4] = {
   false, false,false};
 #define INTERRUPT_BTN_ID 0
 #define TOP_BTN_ID 1
 #define BOTTOM_BTN_ID 2
+#define BACK_BTN_ID 3
 
-uint8_t button_matrix_ids[3] = {
-  INTERRUPT_BTN, TOP_BTN,BOTTOM_BTN};
+uint8_t button_matrix_ids[4] = {
+  INTERRUPT_BTN, TOP_BTN,BOTTOM_BTN, BACK_BTN};
 
 // ================================================================
 // Configure Libraries & Apps
@@ -80,9 +84,9 @@ uint8_t button_matrix_ids[3] = {
 
 #define BLE_RESET_PIN  4 // BLE reset pin (active-low) default 4
 // - BLE P1_5 -> Arduino Digital Pin 5 (BLE host wake-up -> Arduino I/O 5)
-#define BLE_HOST_PIN  5 //Not applicable in this design, would need to be connected to an Interrupt pin. Future designs may share Physical button interrupts with This
+#define BLE_HOST_PIN  3 //Not applicable in this design, would need to be connected to an Interrupt pin. Future designs may share Physical button interrupts with This
 // If using the *_hwake15 project firmware:
-#define BLE_WAKEUP_PIN  7  // BLE wake-up pin
+#define BLE_WAKEUP_PIN  5  // BLE wake-up pin
 #define LED_1_PIN  23
 #define LED_2_PIN  22
 
@@ -91,6 +95,7 @@ BluetoothManager bleManager(BLE_RESET_PIN, BLE_HOST_PIN, BLE_WAKEUP_PIN, LED_1_P
 static BaseState *activeState;
 static MenuState menuState(&display);
 static TimeState timeState(&display);
+static RSSState rssState(&display);
 
 #define TIME_TO_INDICATE_BLE_STATE_CHANGE  10000
 
@@ -138,6 +143,12 @@ void setup() {
   pinMode(INTERRUPT_BTN, INPUT);
   pinMode(TOP_BTN, INPUT_PULLUP);
   pinMode(BOTTOM_BTN, INPUT_PULLUP);
+  pinMode(BACK_BTN, INPUT_PULLUP);
+
+  digitalWrite(MOTOR_PIN, HIGH);
+  delay(300);
+  digitalWrite(MOTOR_PIN, LOW);
+
   //Display First Loaded State
   activeState = &menuState;
   activeState->setStateChangeRequestCallback(stateChangeRequested);
@@ -149,6 +160,10 @@ void setup() {
 
 // main application loop
 void loop() {
+  
+  
+
+  
   //First, update Clock
   new_time = millis();
   long timeDifference = new_time - old_time;
@@ -207,15 +222,32 @@ void loop() {
 // ================================================================
 
 void incomingMessageCallback(const struct ble_msg_attributes_value_evt_t *msg) {
-   Serial.println("INCOMING - ");
-   Serial.print("{ ");
+   //Serial.println("INCOMING - ");
+   Serial.print("{");
+   
+   
+    byte test = msg -> value.data[0];
+    int incrementor = 0;
+    while(test != NULL && incrementor<20){
+        test = msg -> value.data[incrementor];
+        Serial.print(char(test));
+        incrementor++;
+    }
+   
+   Serial.println("}");
+   //Serial.print("Message length is: " );
+   //Serial.println(incrementor);
+ 
+
+
+
+   
    Serial.print(msg -> value.data[0]);
    Serial.print(" : ");
    Serial.print(msg -> value.data[1]);
    Serial.print(" : ");
-   Serial.print(msg -> value.data[2]);
-   Serial.println(" }");
-    activeState->incomingMessageCallback(msg);
+   Serial.println(msg -> value.data[2]);
+   activeState->incomingMessageCallback(msg);
 }
 
 // ================================================================
@@ -251,6 +283,14 @@ void stateChangeRequested(char *stateID){
     activeState->setStateChangeRequestCallback(stateChangeRequested);
     activeState->sync();
   }  
+  else if(strcmp(stateID, "RSSSTATE") == 0){
+    Serial.println("Changing to RSSState"); 
+    //activeState = 0;
+    activeState = &rssState;
+    activeState->setBluetoothManager(&bleManager);
+    activeState->setStateChangeRequestCallback(stateChangeRequested);
+    activeState->sync();
+  }  
 }
 
 // ================================================================
@@ -267,6 +307,8 @@ void buttonInterfaceStateCheck(){
     activeState->btnUpAction(false);
   else if(isButtonDown(BOTTOM_BTN_ID))
     activeState->btnDownAction(false);
+  else if(isButtonDown(BACK_BTN_ID))
+    activeState->btnBackAction(false);
 }
 
 boolean isButtonDown(uint8_t id){

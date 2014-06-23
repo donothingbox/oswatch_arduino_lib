@@ -35,10 +35,10 @@ static char rss3Length = 0;
 static char rss4[50] = "Loading 4";
 static char rss4Length = 0;
 
-static char* main_menu[5] = {
-  " "," ", " ", " ", " "};
-static int main_menu_action[9] = {
-  1,2, 3, 4, 5, 6, 7, 8, 9};
+static char* main_menu[6] = {
+  " "," ", " ", " ", " ", "::Next::"};
+static int main_menu_action[6] = {
+  1,2, 3, 4, 5, 6};
 static int top_menu_id = 0;
 static int hilight_menu_id = 0;
 
@@ -224,30 +224,33 @@ int RSSState::getSelectedMenuAction(int id){
 
 void RSSState::incomingMessageCallback(const struct ble_msg_attributes_value_evt_t *msg) {
  
-  
+      delay(50);
       Serial.print("RSS MSG: ");
       Serial.println(msg -> value.data[1]);
       
 
     if(msg -> value.data[0] == 0x03)//RSS return
     {
-       if(msg -> value.data[1] == 0x01)//Initial String message
+      //This defines the metadata for the group message
+      if(msg -> value.data[1] == 0x01)//Initial String message
       {
          currentLine = 1;
          totalLines = byteToInteger(msg -> value.data[2]) +1;
-         Serial.println("::::: BEGINNING OF GROUP MESSAGE :::::");
-         Serial.print("Total Lines Expected: ");
+         Serial.println(F("::::: BEGINNING OF GROUP MESSAGE :::::"));
+         Serial.print(F("Total Lines Expected: "));
          Serial.println(totalLines);
          uint8_t length = (byte) 6;
          uint8_t data_packet[6] = {length,currentLine, 1,1,1,1};
-         getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
+         //getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
+         getBluetoothManager().transmitMessage(0x03, 0x02, currentLine, 1, 1, 1, 1);
       }
       
+      //string message
       else if(msg -> value.data[1] == 0x02)//Initial String message
       {
         totalPackets = byteToInteger(msg -> value.data[2]);
-        Serial.println("::::: BEGINNING OF PACKET MESSAGE :::::");
-        Serial.print("Total Packets Expected: ");
+        Serial.println(F("::::: BEGINNING OF PACKET MESSAGE :::::"));
+        Serial.print(F("Total Packets Expected: "));
         Serial.println(totalPackets);
         //reset complete phrase
         completePhrase = "";
@@ -266,18 +269,70 @@ void RSSState::incomingMessageCallback(const struct ble_msg_attributes_value_evt
         if(currentPacket<totalPackets){
             uint8_t length = (byte) 6;
             uint8_t data_packet[6] = {length,currentPacket, 1,1,1,1};
-            getBluetoothManager().transmitMessage(0x03, 0x03, data_packet);
+            //getBluetoothManager().transmitMessage(0x03, 0x03, data_packet);
+            getBluetoothManager().transmitMessage(0x03, 0x03, currentPacket, 1, 1, 1, 1);
         }
         else
         {
-            Serial.println("ERROR: Package only 1 packet long");          
+            Serial.println(F("Package only 1 packet long, load the next")); 
+            //currentLine++;
+            //uint8_t length = (byte) 6;
+            //uint8_t data_packet[6] = {length,currentLine, 1,1,1,1};
+            //getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
+            
+            //loadNextPhrase(currentLine);
+            
+            if(currentLine == 1)
+            {
+              completePhrase.toCharArray(rss0, 50);
+              main_menu[0] = rss0;
+            }
+            
+            else if(currentLine == 2)
+            {
+              completePhrase.toCharArray(rss1, 50);
+              main_menu[1] = rss1;
+            }
+             else if(currentLine == 3)
+            {
+              completePhrase.toCharArray(rss2, 50);
+              main_menu[2] = rss2;
+            }   
+             else if(currentLine == 4)
+            {
+              completePhrase.toCharArray(rss3, 50);
+              main_menu[3] = rss3;
+            }
+            else if(currentLine == 5)
+            {
+              completePhrase.toCharArray(rss4, 50);
+              main_menu[4] = rss4;
+            }     
+            Serial.println(F("::::: END OF PACKET MESSAGE :::::"));
+            currentLine++;
+            
+            if(currentLine>=totalLines)
+            {
+                 Serial.println(F("::::: END OF ALL MESSAGES :::::"));
+                 render();
+            }
+            else
+            {
+                 uint8_t length = (byte) 6;
+                 uint8_t data_packet[6] = {length,currentLine, 1,1,1,1};
+                 //getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
+                 getBluetoothManager().transmitMessage(0x03, 0x02, currentLine, 1, 1, 1, 1);
+
+                 
+            }
+            
         }
 
         
       }
       else if(msg -> value.data[1] == 0x03)//new packet
       {
-        Serial.print("New Packet incoming: ");
+        Serial.print(F("New Packet incoming: "));
         Serial.println(currentPacket);
 
         byte test = msg -> value.data[3];
@@ -294,7 +349,9 @@ void RSSState::incomingMessageCallback(const struct ble_msg_attributes_value_evt
  
             uint8_t length = (byte) 6;
             uint8_t data_packet[6] = {length,currentPacket, 1,1,1,1};
-            getBluetoothManager().transmitMessage(0x03, 0x03, data_packet);
+           // getBluetoothManager().transmitMessage(0x03, 0x03, data_packet);
+            getBluetoothManager().transmitMessage(0x03, 0x03, currentPacket, 1, 1, 1, 1);
+
         }
         else
         {
@@ -302,6 +359,7 @@ void RSSState::incomingMessageCallback(const struct ble_msg_attributes_value_evt
   
   
             //completePhrase.toCharArray(main_menu[currentLine-1], 150);
+            //loadNextPhrase(currentLine);
             
   
             if(currentLine == 1)
@@ -330,19 +388,20 @@ void RSSState::incomingMessageCallback(const struct ble_msg_attributes_value_evt
               completePhrase.toCharArray(rss4, 50);
               main_menu[4] = rss4;
             }     
-            Serial.println("::::: END OF PACKET MESSAGE :::::");
+            Serial.println(F("::::: END OF PACKET MESSAGE :::::"));
             currentLine++;
             
             if(currentLine>=totalLines)
             {
-                 Serial.println("::::: END OF ALL MESSAGES :::::");
+                 Serial.println(F("::::: END OF ALL MESSAGES :::::"));
                  render();
             }
             else
             {
                  uint8_t length = (byte) 6;
                  uint8_t data_packet[6] = {length,currentLine, 1,1,1,1};
-                 getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
+                 //getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
+                 getBluetoothManager().transmitMessage(0x03, 0x02, currentLine, 1, 1, 1, 1);
             }
         }
       }
@@ -362,8 +421,54 @@ void RSSState::incomingMessageCallback(const struct ble_msg_attributes_value_evt
   
 }
 
+
+void RSSState::loadNextPhrase(int currentLine){
+    if(currentLine == 1)
+    {
+      completePhrase.toCharArray(rss0, 50);
+      main_menu[0] = rss0;
+    }
+    
+    else if(currentLine == 2)
+    {
+      completePhrase.toCharArray(rss1, 50);
+      main_menu[1] = rss1;
+    }
+     else if(currentLine == 3)
+    {
+      completePhrase.toCharArray(rss2, 50);
+      main_menu[2] = rss2;
+    }   
+     else if(currentLine == 4)
+    {
+      completePhrase.toCharArray(rss3, 50);
+      main_menu[3] = rss3;
+    }
+    else if(currentLine == 5)
+    {
+      completePhrase.toCharArray(rss4, 50);
+      main_menu[4] = rss4;
+    }     
+    Serial.println(F("::::: END OF PACKET MESSAGE :::::"));
+    currentLine++;
+    
+    if(currentLine>=totalLines)
+    {
+         Serial.println(F("::::: END OF ALL MESSAGES :::::"));
+         render();
+    }
+    else
+    {
+         uint8_t length = (byte) 6;
+         uint8_t data_packet[6] = {length,currentLine, 1,1,1,1};
+         getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
+    }
+}
+
+
 void RSSState::updateDisplay(long lastUpdateTime){
 
+  _screen->setTextWrap(false);
   idleTime += lastUpdateTime;
   if(idleTime>1500){
     frameClock+=lastUpdateTime;
@@ -475,9 +580,9 @@ void RSSState::sync(){
     _screen->fillRect(10, 10, _screen->width()-20, _screen->height()-20, WHITE);
     _screen->setTextColor(BLACK);
     _screen->setCursor(12, 12);
-    _screen->println("Error: Please");
+    _screen->println(F("Error: Please"));
     _screen->setCursor(12, 22);
-    _screen->println("Connect Phone");
+    _screen->println(F("Connect Phone"));
     _screen->display();
   }
 }

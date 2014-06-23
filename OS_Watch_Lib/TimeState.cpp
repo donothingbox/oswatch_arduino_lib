@@ -75,12 +75,14 @@ void TimeState::updateDisplay(long lastUpdateTime){
   {
     if(isWaitingForResponse)
       millisSinceLastUpdate+=lastUpdateTime;
+      
+    /*
     if(millisSinceLastUpdate>=1000)
     {
         Serial.println("Re sending lost data packet");
         millisSinceLastUpdate = 0;
         getBluetoothManager().transmitMessage(TIME_STATE_APP_ID, cachedAction, cashedDataPacket);
-    }
+    }*/
   }
 }
 
@@ -91,13 +93,13 @@ void TimeState::sync(){
       millisSinceLastUpdate = 0;
       uint8_t length = (byte) 6;
       uint8_t data_packet[6] = {length,100,100,100,100,254};
-      cashedDataPacket[0] = length;
-      cashedDataPacket[1] = 100;
-      cashedDataPacket[2] = 100;
-      cashedDataPacket[3] = 100;
-      cashedDataPacket[4] = 100;
-      cashedDataPacket[5] = 254;
-      cachedAction = TIME_STATE_APP_ACTION_1;
+      //cashedDataPacket[0] = length;
+      //cashedDataPacket[1] = 100;
+      //cashedDataPacket[2] = 100;
+      //cashedDataPacket[3] = 100;
+      //cashedDataPacket[4] = 100;
+      //cashedDataPacket[5] = 254;
+      //cachedAction = TIME_STATE_APP_ACTION_1;
       getBluetoothManager().transmitMessage(TIME_STATE_APP_ID, TIME_STATE_APP_ACTION_1, data_packet);
   }
   else
@@ -108,16 +110,16 @@ void TimeState::sync(){
     _screen->fillRect(10, 10, _screen->width()-20, _screen->height()-20, WHITE);
     _screen->setTextColor(BLACK);
     _screen->setCursor(12, 12);
-    _screen->println("Error: Please");
+    _screen->println(F("Error: Please"));
     _screen->setCursor(12, 22);
-    _screen->println("Connect Phone");
+    _screen->println(F("Connect Phone"));
     _screen->display();
   }
 }
 
 
 void TimeState::renderClockType1(){
-   Serial.println("render time type 1");
+   Serial.println(F("render time type 1"));
   _screen->clearDisplay();
   _screen->setTextSize(5);
   _screen->setCursor(0, 0);
@@ -211,7 +213,7 @@ void TimeState::incomingMessageCallback(const struct ble_msg_attributes_value_ev
       byte b[4] = {
         msg -> value.data[4], msg -> value.data[3], msg -> value.data[2], msg -> value.data[1] };
       long timeStamp = bytesToInteger(b);
-      Serial.print("TimeStamp: ");
+      Serial.print(F("TimeStamp: "));
       Serial.println(timeStamp);
       setTime(timeStamp);
       long timeZoneOffset = 60*60*TIME_ZONE_OFFSET;

@@ -216,8 +216,8 @@ void loop() {
 
 void incomingMessageCallback(const struct ble_msg_attributes_value_evt_t *msg) {
    digitalWrite(LED_2_PIN, LOW);
-   Serial.println("INCOMING - ");
-   Serial.print("{");
+   Serial.println(F("INCOMING - "));
+   Serial.print(F("{"));
    
    
     byte test = msg -> value.data[0];
@@ -228,7 +228,7 @@ void incomingMessageCallback(const struct ble_msg_attributes_value_evt_t *msg) {
         incrementor++;
     }
    
-   Serial.println("}");
+   Serial.println(F("}"));
    //Serial.print("Message length is: " );
    //Serial.println(incrementor);
  
@@ -237,9 +237,9 @@ void incomingMessageCallback(const struct ble_msg_attributes_value_evt_t *msg) {
 
    
    Serial.print(msg -> value.data[0]);
-   Serial.print(" : ");
+   Serial.print(F(" : "));
    Serial.print(msg -> value.data[1]);
-   Serial.print(" : ");
+   Serial.print(F(" : "));
    Serial.println(msg -> value.data[2]);
    activeState->incomingMessageCallback(msg);
 }
@@ -256,13 +256,13 @@ void stateChangeRequested(char *stateID){
   //free(p);
   //malloc(
   
-  Serial.print("State change requested: "); 
+  Serial.print(F("State change requested: ")); 
   Serial.println(stateID); 
   if(strcmp(stateID, "") == 0){
-     Serial.println("ERROR: UNDEFINED STATE"); 
+     Serial.println(F("ERROR: UNDEFINED STATE")); 
   }
   else if(strcmp(stateID, "MENUSTATE") == 0){
-    Serial.println("Changing to MenuState"); 
+    Serial.println(F("Changing to MenuState")); 
     //activeState = 0;
     activeState = &menuState;
     activeState->setBluetoothManager(&bleManager);
@@ -270,7 +270,7 @@ void stateChangeRequested(char *stateID){
     activeState->render();
   }
   else if(strcmp(stateID, "TIMESTATE") == 0){
-    Serial.println("Changing to TimeState"); 
+    Serial.println(F("Changing to TimeState")); 
     //activeState = 0;
     activeState = &timeState;
     activeState->setBluetoothManager(&bleManager);
@@ -278,7 +278,7 @@ void stateChangeRequested(char *stateID){
     activeState->sync();
   }  
   else if(strcmp(stateID, "RSSSTATE") == 0){
-    Serial.println("Changing to RSSState"); 
+    Serial.println(F("Changing to RSSState")); 
     //activeState = 0;
     activeState = &rssState;
     activeState->setBluetoothManager(&bleManager);
@@ -335,9 +335,9 @@ boolean isButtonDown(uint8_t id){
 }
 
 void displayMemory(){
-     Serial.print(":: :: :: :: :: FREE MEMORY: ");
+     Serial.print(F(":: :: :: :: :: FREE MEMORY: "));
      Serial.print(freeRam());
-     Serial.println(" :: :: :: :: ::");
+     Serial.println(F(" :: :: :: :: ::"));
 }
 
 

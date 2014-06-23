@@ -44,6 +44,8 @@ class RSSState : public BaseState {
     int getSelectedMenuID();
     int getSelectedMenuAction(int id);
     void incomingMessageCallback(const struct ble_msg_attributes_value_evt_t *msg);
+    void loadNextPhrase(int currentLine);
+
     Adafruit_SSD1306 *_screen;
 };
 #endif

@@ -116,14 +116,14 @@ void MenuState::render(){
 }
 
 void MenuState::btnInterruptAction(boolean isDimmed){
-      Serial.println("Btn intterupt requested");
+      Serial.println(F("Btn intterupt requested"));
       if(getDisplayDimStatus() == true){
         _screen->dim(false);
         setDisplayDimStatus(false);
       }
       else
       {
-        Serial.println("Not dimmed, so change states");
+        Serial.println(F("Not dimmed, so change states"));
 
         int currentMenuID = getSelectedMenuID();
         if(getSelectedMenuAction(currentMenuID) == 1)

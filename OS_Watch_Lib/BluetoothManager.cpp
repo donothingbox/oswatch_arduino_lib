@@ -1,4 +1,4 @@
-/*
+ /*
 Copyright 2014 DoNothingBox LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@ limitations under the License.
 #ifndef SOFTWARESERIAL_H
   #include <SoftwareSerial.h>
 #endif
+
 
 //Best to define these in the main file, easier to turn off and on. This is for reference only
 //#define BLUETOOTHMANAGER_DEBUG
@@ -185,20 +186,20 @@ void BluetoothManager::setBLEIndicatorFlag(boolean shouldDisplay){
 
 void BluetoothManager::my_ble_evt_system_boot(const ble_msg_system_boot_evt_t *msg){
 #ifdef BLUETOOTHMANAGER_DEBUG
-  Serial.print("###\tsystem_boot: { ");
-  Serial.print("major: "); 
+  Serial.print(F("###\tsystem_boot: { "));
+  Serial.print(F("major: ")); 
   Serial.print(msg -> major, HEX);
-  Serial.print(", minor: "); 
+  Serial.print(F(", minor: ")); 
   Serial.print(msg -> minor, HEX);
-  Serial.print(", patch: "); 
+  Serial.print(F(", patch: ")); 
   Serial.print(msg -> patch, HEX);
-  Serial.print(", build: "); 
+  Serial.print(F(", build: ")); 
   Serial.print(msg -> build, HEX);
-  Serial.print(", ll_version: "); 
+  Serial.print(F(", ll_version: ")); 
   Serial.print(msg -> ll_version, HEX);
-  Serial.print(", protocol_version: "); 
+  Serial.print(F(", protocol_version: ")); 
   Serial.print(msg -> protocol_version, HEX);
-  Serial.print(", hw: "); 
+  Serial.print(F(", hw: ")); 
   Serial.print(msg -> hw, HEX);
   Serial.println(" }");
 #endif
@@ -303,7 +304,7 @@ void BluetoothManager::onBusy(){
 }
 
 void BluetoothManager::transmitMessage(byte appId, byte appAction, const uint8_t *data_packet){
-  digitalWrite(LED_2_PIN, LOW);
+  //digitalWrite(LED_2_PIN, LOW);
   uint8_t output_data[data_packet[0]+2];
   output_data[0] = data_packet[0]+2;
   output_data[1] = appId;
@@ -319,7 +320,7 @@ void BluetoothManager::transmitMessage(byte appId, byte appAction, const uint8_t
 
   for (uint8_t i = 0; i < output_data[0]; i++) {
   Serial.print(output_data[i]);
-  Serial.print(" ");
+  Serial.print(" : ");
   }
   Serial.println("}");
   
@@ -327,24 +328,56 @@ void BluetoothManager::transmitMessage(byte appId, byte appAction, const uint8_t
   ble112.ble_cmd_attributes_write(GATT_HANDLE_C_TX_DATA, 0, output_data[0], output_data);
 }
 
+
+void BluetoothManager::transmitMessage(byte appId, byte appAction, byte appByte1, byte appByte2, byte appByte3, byte appByte4, byte appByte5){
+  //digitalWrite(LED_2_PIN, LOW);
+  
+  uint8_t output_data[8];
+  output_data[0] = 8;
+  output_data[1] = appId;
+  output_data[2] = appAction;
+  output_data[3] = appByte1;
+  output_data[4] = appByte2;
+  output_data[5] = appByte3;
+  output_data[6] = appByte4;
+  output_data[7] = appByte5;  
+  
+ 
+  
+  Serial.print(F("OUTGOING BYTES - "));
+  Serial.println(output_data[0]);
+  Serial.print(F("{ "));
+
+  for (uint8_t i = 0; i < output_data[0]; i++) {
+  Serial.print(output_data[i]);
+  Serial.print(F(" : "));
+  }
+  Serial.println(F("}"));
+  
+  
+  ble112.ble_cmd_attributes_write(GATT_HANDLE_C_TX_DATA, 0, 8, output_data);
+}
+
+
+
 void BluetoothManager::checkActivity(){
   ble112.checkActivity();
 }
 
 void BluetoothManager::my_ble_evt_attributes_value(const struct ble_msg_attributes_value_evt_t *msg){
 #ifdef BLUETOOTHMANAGER_DEBUG
-  Serial.print("###\tattributes_value: { ");
-  Serial.print("connection: "); 
+  Serial.print(F("###\tattributes_value: { "));
+  Serial.print(F("connection: ")); 
   Serial.print(msg -> connection, HEX);
-  Serial.print(", reason: "); 
+  Serial.print(F(", reason: ")); 
   Serial.print(msg -> reason, HEX);
-  Serial.print(", handle: "); 
+  Serial.print(F(", handle: ")); 
   Serial.print(msg -> handle, HEX);
-  Serial.print(", offset: "); 
+  Serial.print(F(", offset: ")); 
   Serial.print(msg -> offset, HEX);
-  Serial.print(", value_len: "); 
+  Serial.print(F(", value_len: ")); 
   Serial.print(msg -> value.len, HEX);
-  Serial.print(", value_data: ");
+  Serial.print(F(", value_data: "));
   // this is a "uint8array" data type, which is a length byte and a uint8_t* pointer
   for (uint8_t i = 0; i < msg -> value.len; i++) {
     if (msg -> value.data[i] < 16) Serial.write('0');
@@ -355,7 +388,7 @@ void BluetoothManager::my_ble_evt_attributes_value(const struct ble_msg_attribut
 
   // check for data written to "c_rx_data" handle
   if (msg -> handle == GATT_HANDLE_C_RX_DATA && msg -> value.len > 0) {
-    Serial.print("Standard data RX: ");
+    Serial.print(F("Standard data RX: "));
     Serial.println(msg -> value.data[0]);//ID Byte
 
    messageCallback(msg);
@@ -365,12 +398,12 @@ void BluetoothManager::my_ble_evt_attributes_value(const struct ble_msg_attribut
 
 void BluetoothManager::my_ble_evt_connection_disconnect(const struct ble_msg_connection_disconnected_evt_t *msg){
 #ifdef BLUETOOTHMANAGER_DEBUG
-  Serial.print("###\tconnection_disconnect: { ");
-  Serial.print("connection: "); 
+  Serial.print(F("###\tconnection_disconnect: { "));
+  Serial.print(F("connection: ")); 
   Serial.print(msg -> connection, HEX);
-  Serial.print(", reason: "); 
+  Serial.print(F(", reason: ")); 
   Serial.print(msg -> reason, HEX);
-  Serial.println(" }");
+  Serial.println(F(" }"));
 #endif
 
   // set state to DISCONNECTED
@@ -395,8 +428,8 @@ void BluetoothManager::my_ble_evt_connection_disconnect(const struct ble_msg_con
 
 void BluetoothManager::my_ble_evt_connection_status(const ble_msg_connection_status_evt_t *msg){
 #ifdef BLUETOOTHMANAGER_DEBUG
-  Serial.print("###\tconnection_status: { ");
-  Serial.print("connection: "); 
+  Serial.print(F("###\tconnection_status: { "));
+  Serial.print(F("connection: ")); 
   Serial.print(msg -> connection, HEX);
   Serial.print(", flags: "); 
   Serial.print(msg -> flags, HEX);

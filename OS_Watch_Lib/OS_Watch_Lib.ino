@@ -41,6 +41,8 @@ limitations under the License.
 //#define DEBUG
 #define BLUETOOTHMANAGER_DEBUG
 
+#define TRACE_RAM_USAGE
+
 // ================================================================
 // Configure Arduino I/O Pins
 // ================================================================
@@ -147,6 +149,8 @@ void setup() {
   digitalWrite(MOTOR_PIN, HIGH);
   delay(300);
   digitalWrite(MOTOR_PIN, LOW);
+  
+  BaseState::setGlobalScreenRef(&display);
 
   //Display First Loaded State
   activeState = &menuState;
@@ -314,7 +318,7 @@ boolean isButtonDown(uint8_t id){
     button_matrix_status[id] = btn_status_now;
     if(btn_status == HIGH)
     {
-      Serial.println("btn down");
+      Serial.println(F("btn down"));
       displayMemory();
       countdownTillSleep = DIM_COUNTDOWN;
       display.dim(false);
@@ -323,7 +327,7 @@ boolean isButtonDown(uint8_t id){
     }
     else
     {
-      Serial.println("btn up");
+      Serial.println(F("btn up"));
       displayMemory();
       countdownTillSleep = DIM_COUNTDOWN;
       display.dim(false);
@@ -335,9 +339,11 @@ boolean isButtonDown(uint8_t id){
 }
 
 void displayMemory(){
+  #ifdef TRACE_RAM_USAGE
      Serial.print(F(":: :: :: :: :: FREE MEMORY: "));
      Serial.print(freeRam());
      Serial.println(F(" :: :: :: :: ::"));
+  #endif
 }
 
 

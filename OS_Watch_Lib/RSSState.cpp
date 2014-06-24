@@ -35,16 +35,22 @@ static char rss3Length = 0;
 static char rss4[50] = "Loading 4";
 static char rss4Length = 0;
 
+static char rssTitle[50] = ":: Title ::";
+static char rssTitleLength = 0;
+
+static char rssDescription[300] = ":: Description ::";
+static char rssDescriptionLength = 0;
+
 static char* main_menu[6] = {
-  " "," ", " ", " ", " ", "::Next::"};
+  " "," ", " ", " ", " ", "<:: Next ::>"};
 static int main_menu_action[6] = {
   1,2, 3, 4, 5, 6};
 static int top_menu_id = 0;
 static int hilight_menu_id = 0;
 
-static byte RSS_STATE_APP_ID = 0x03;
-static byte RSS_STATE_APP_ACTION_1 = 0x01;
-static byte RSS_STATE_APP_ACTION_2 = 0x02;
+static const byte RSS_STATE_APP_ID = 0x03;
+static const byte RSS_STATE_APP_ACTION_1 = 0x01;
+static const byte RSS_STATE_APP_ACTION_2 = 0x02;
 
 static String completePhrase = "";
 static int totalPackets = 0;
@@ -54,17 +60,23 @@ static int currentLine = 0;
 
 
 static int scrollPoint = 0;
+static int frameCounter = 0;
 static int frameClock = 0;
 
 static int idleTime = 0;
 
+static const byte RSS_APP_MODE_LIST = 0x00;
+static const byte RSS_APP_MODE_DETAILS = 0x01;
 
+static byte currentRSSMode = 0x00;
 
+static boolean isLoading = false;
 
 
 RSSState::RSSState(Adafruit_SSD1306 *screen) : BaseState(_screen){
   STATE_ID = "RSSSTATE";
   _screen =  screen;
+  //_screenRef = screen;
   setupMenu();
 }
 
@@ -78,89 +90,20 @@ void RSSState::setupMenu(){
 }
 
 void RSSState::render(){
-  
-  _screen->clearDisplay();
-  _screen->setTextSize(1);
-  switch (hilight_menu_id) {
-  case 0:
-    _screen->fillRect(0, 0, _screen->width(), _screen->height()/3, WHITE);
-    _screen->drawRect(0, _screen->height()/3, _screen->width(), _screen->height()/3, WHITE);
-    _screen->drawRect(0, (_screen->height()/3)*2, _screen->width(), _screen->height()/3, WHITE);
-    break;
-  case 1:
-    _screen->drawRect(0, 0, _screen->width(), _screen->height()/3, WHITE);
-    _screen->fillRect(0, _screen->height()/3, _screen->width(), _screen->height()/3, WHITE);
-    _screen->drawRect(0, (_screen->height()/3)*2, _screen->width(), _screen->height()/3, WHITE);
-    break;
-  case 2:
-    _screen->drawRect(0, 0, _screen->width(), _screen->height()/3, WHITE);
-    _screen->drawRect(0, _screen->height()/3, _screen->width(), _screen->height()/3, WHITE);
-    _screen->fillRect(0, (_screen->height()/3)*2, _screen->width(), _screen->height()/3, WHITE);
-    break;
-  } 
-
-  if(hilight_menu_id == 0)
-    _screen->setTextColor(BLACK);
-  else
-    _screen->setTextColor(WHITE);
-
-  if(top_menu_id<=8)
-  {
-    _screen->setCursor(6,6);
-    _screen->println(main_menu[top_menu_id]);
-  }
-
-  if(hilight_menu_id == 1)
-    _screen->setTextColor(BLACK);
-  else
-    _screen->setTextColor(WHITE);
-
-  if(top_menu_id<=7)
-  {
-    _screen->setCursor(6, (_screen->height()/3)+6);
-    _screen->println(main_menu[top_menu_id+1]);
-  }
-
-  if(hilight_menu_id == 2)
-    _screen->setTextColor(BLACK);
-  else
-    _screen->setTextColor(WHITE);
-
-  if(top_menu_id<=6)
-  {
-    _screen->setCursor(6, ((_screen->height()/3)*2)+6);
-    _screen->println(main_menu[top_menu_id+2]);
-  }
-  //Popup test
-  /*
-  _screen->fillRect(8, 8, _screen->width()-16, _screen->height()-16, BLACK);
-  _screen->fillRect(10, 10, _screen->width()-20, _screen->height()-20, WHITE);
-   _screen->setTextColor(BLACK);
-  _screen->setCursor(12, 12);
-  _screen->println("Error: Please");
-  _screen->setCursor(12, 22);
-  _screen->println("Connect BLE");*/
-  
-  _screen->display();
+ 
 }
 
 void RSSState::btnInterruptAction(boolean isDimmed){
-      Serial.println("Btn intterupt requested");
+      Serial.println(F("Btn intterupt requested"));
       if(getDisplayDimStatus() == true){
         _screen->dim(false);
         setDisplayDimStatus(false);
       }
       else
       {
-        Serial.println("Not dimmed, so change states");
-
         int currentMenuID = getSelectedMenuID();
-        if(getSelectedMenuAction(currentMenuID) == 1)
-        {
-          
-          char *stateID = "TIMESTATE";
-          makeChangeRequest(stateID);
-        } 
+        isLoading = true;
+        getBluetoothManager().transmitMessage(0x03, 0x04, getSelectedMenuAction(currentMenuID), 1, 1, 1, 1);
       }
 }
 
@@ -206,12 +149,19 @@ void RSSState::btnUpAction(boolean isDimmed){
 
 void RSSState::btnBackAction(boolean isDimmed){
   
-     Serial.print(":: :: :: :: :: FREE MEMORY: ");
-     Serial.print(freeRam());
-     Serial.println(" :: :: :: :: ::");
-     _screen->clearDisplay();
-     char *stateID = "MENUSTATE";
-     makeChangeRequest(stateID);
+     if(currentRSSMode ==  RSS_APP_MODE_DETAILS)
+     {
+       currentRSSMode = RSS_APP_MODE_LIST;
+     }
+     else
+     {
+       Serial.print(":: :: :: :: :: FREE MEMORY: ");
+       Serial.print(freeRam());
+       Serial.println(" :: :: :: :: ::");
+       _screen->clearDisplay();
+       char *stateID = "MENUSTATE";
+       makeChangeRequest(stateID);
+     }
 }
 
 int RSSState::getSelectedMenuID(){
@@ -223,17 +173,14 @@ int RSSState::getSelectedMenuAction(int id){
 }
 
 void RSSState::incomingMessageCallback(const struct ble_msg_attributes_value_evt_t *msg) {
- 
-      delay(50);
-      Serial.print("RSS MSG: ");
-      Serial.println(msg -> value.data[1]);
-      
 
     if(msg -> value.data[0] == 0x03)//RSS return
     {
       //This defines the metadata for the group message
       if(msg -> value.data[1] == 0x01)//Initial String message
       {
+         isLoading = true;
+         currentRSSMode = RSS_APP_MODE_LIST;
          currentLine = 1;
          totalLines = byteToInteger(msg -> value.data[2]) +1;
          Serial.println(F("::::: BEGINNING OF GROUP MESSAGE :::::"));
@@ -241,7 +188,6 @@ void RSSState::incomingMessageCallback(const struct ble_msg_attributes_value_evt
          Serial.println(totalLines);
          uint8_t length = (byte) 6;
          uint8_t data_packet[6] = {length,currentLine, 1,1,1,1};
-         //getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
          getBluetoothManager().transmitMessage(0x03, 0x02, currentLine, 1, 1, 1, 1);
       }
       
@@ -269,19 +215,11 @@ void RSSState::incomingMessageCallback(const struct ble_msg_attributes_value_evt
         if(currentPacket<totalPackets){
             uint8_t length = (byte) 6;
             uint8_t data_packet[6] = {length,currentPacket, 1,1,1,1};
-            //getBluetoothManager().transmitMessage(0x03, 0x03, data_packet);
             getBluetoothManager().transmitMessage(0x03, 0x03, currentPacket, 1, 1, 1, 1);
         }
         else
         {
             Serial.println(F("Package only 1 packet long, load the next")); 
-            //currentLine++;
-            //uint8_t length = (byte) 6;
-            //uint8_t data_packet[6] = {length,currentLine, 1,1,1,1};
-            //getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
-            
-            //loadNextPhrase(currentLine);
-            
             if(currentLine == 1)
             {
               completePhrase.toCharArray(rss0, 50);
@@ -310,25 +248,20 @@ void RSSState::incomingMessageCallback(const struct ble_msg_attributes_value_evt
             }     
             Serial.println(F("::::: END OF PACKET MESSAGE :::::"));
             currentLine++;
-            
             if(currentLine>=totalLines)
             {
                  Serial.println(F("::::: END OF ALL MESSAGES :::::"));
                  render();
+                 isLoading = false;
             }
             else
             {
                  uint8_t length = (byte) 6;
                  uint8_t data_packet[6] = {length,currentLine, 1,1,1,1};
-                 //getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
                  getBluetoothManager().transmitMessage(0x03, 0x02, currentLine, 1, 1, 1, 1);
-
-                 
             }
             
         }
-
-        
       }
       else if(msg -> value.data[1] == 0x03)//new packet
       {
@@ -355,13 +288,6 @@ void RSSState::incomingMessageCallback(const struct ble_msg_attributes_value_evt
         }
         else
         {
-            //Serial.println("");
-  
-  
-            //completePhrase.toCharArray(main_menu[currentLine-1], 150);
-            //loadNextPhrase(currentLine);
-            
-  
             if(currentLine == 1)
             {
               completePhrase.toCharArray(rss0, 50);
@@ -395,28 +321,179 @@ void RSSState::incomingMessageCallback(const struct ble_msg_attributes_value_evt
             {
                  Serial.println(F("::::: END OF ALL MESSAGES :::::"));
                  render();
+                 isLoading = false;
             }
             else
             {
                  uint8_t length = (byte) 6;
                  uint8_t data_packet[6] = {length,currentLine, 1,1,1,1};
-                 //getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
                  getBluetoothManager().transmitMessage(0x03, 0x02, currentLine, 1, 1, 1, 1);
             }
         }
       }
       
       
-      /*
-      for(int i=2;i<= sizeof(msg -> value.data);i++)
+      
+      
+      
+      
+      
+      
+      
+      
+      //This defines the metadata for the group message
+      if(msg -> value.data[1] == 0x04)//Initial String message
       {
+        currentRSSMode = RSS_APP_MODE_DETAILS;
+     
+         currentLine = 1;
+         totalLines = 2;
+         Serial.println(F("::::: BEGINNING OF DETAILS GROUP MESSAGE :::::"));
+         Serial.print(F("Total Lines Expected: "));
+         Serial.println(totalLines);
+         uint8_t length = (byte) 6;
+         uint8_t data_packet[6] = {length,currentLine, 1,1,1,1};
+         //getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
+         getBluetoothManager().transmitMessage(0x03, 0x05, currentLine, 1, 1, 1, 1);
+      }
+      
+      //string message
+      else if(msg -> value.data[1] == 0x05)//Initial String message
+      {
+        totalPackets = byteToInteger(msg -> value.data[2]);
+        Serial.println(F("::::: BEGINNING OF DETAILS PACKET MESSAGE :::::"));
+        Serial.print(F("Total Packets Expected: "));
+        Serial.println(totalPackets);
+        //reset complete phrase
+        completePhrase = "";
+        currentPacket = 0;
 
-          Serial.print("str: ");
-          Serial.println(msg -> value.data[i]);
-      }*/
+        byte test = msg -> value.data[3];
+        int incrementor = 3;
+        while(test != NULL && incrementor<20){
+            test = msg -> value.data[incrementor];
+            completePhrase+=char(test);
+            Serial.println(char(test));
+            incrementor++;
+        }
+        currentPacket = 1;
+        Serial.println(completePhrase);
+        if(currentPacket<totalPackets){
+            uint8_t length = (byte) 6;
+            uint8_t data_packet[6] = {length,currentPacket, 1,1,1,1};
+            //getBluetoothManager().transmitMessage(0x03, 0x03, data_packet);
+            getBluetoothManager().transmitMessage(0x03, 0x07, currentPacket, 1, 1, 1, 1);
+        }
+        else
+        {
+            Serial.println(F("Package only 1 packet long, load the next")); 
+            //currentLine++;
+            //uint8_t length = (byte) 6;
+            //uint8_t data_packet[6] = {length,currentLine, 1,1,1,1};
+            //getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
+            
+            //loadNextPhrase(currentLine);
+            
+            if(currentLine == 1)
+            {
+              completePhrase.toCharArray(rssTitle, 50);
+              //main_menu[0] = rssTitle;
+            }
+            
+            else if(currentLine == 2)
+            {
+              completePhrase.toCharArray(rssDescription, 300);
+              //main_menu[1] = rssDescription;
+            }
+           
+            Serial.println(F("::::: END OF DETAILS PACKET MESSAGE :::::"));
+            currentLine++;
+            
+            if(currentLine>totalLines)
+            {
+                 Serial.println(F("::::: END OF ALL DETAILS ESSAGES :::::"));
+                 isLoading = false;
+                 render();
+            }
+            else
+            {
+                 uint8_t length = (byte) 6;
+                 uint8_t data_packet[6] = {length,currentLine, 1,1,1,1};
+                 //getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
+                 getBluetoothManager().transmitMessage(0x03, 0x06, currentLine, 1, 1, 1, 1);
+            }
+            
+        }
+
+        
+      }
+      else if(msg -> value.data[1] == 0x06)//new packet
+      {
+        Serial.print(F("New Packet incoming: "));
+        Serial.println(currentPacket);
+
+        byte test = msg -> value.data[3];
+        int incrementor = 3;
+        while(test != NULL && incrementor<20){
+            test = msg -> value.data[incrementor];
+            completePhrase+=char(test);
+            Serial.println(char(test));
+            incrementor++;
+        }
+        currentPacket += 1;
+        Serial.println(completePhrase);
+        if(currentPacket<totalPackets){
+ 
+            uint8_t length = (byte) 6;
+            uint8_t data_packet[6] = {length,currentPacket, 1,1,1,1};
+           // getBluetoothManager().transmitMessage(0x03, 0x03, data_packet);
+            getBluetoothManager().transmitMessage(0x03, 0x07, currentPacket, 1, 1, 1, 1);
+
+        }
+        else
+        {
+            //Serial.println("");
+  
+  
+            //completePhrase.toCharArray(main_menu[currentLine-1], 150);
+            //loadNextPhrase(currentLine);
+            
+  
+                      if(currentLine == 1)
+            {
+              completePhrase.toCharArray(rssTitle, 50);
+              //main_menu[0] = rssTitle;
+            }
+            
+            else if(currentLine == 2)
+            {
+              completePhrase.toCharArray(rssDescription, 300);
+              //main_menu[1] = rssDescription;
+            }
+           
+            Serial.println(F("::::: END OF DETAILS PACKET MESSAGE :::::"));
+            currentLine++;
+            
+            if(currentLine>=totalLines)
+            {
+                 Serial.println(F("::::: END OF ALL DETAILS ESSAGES :::::"));
+                 isLoading = false;
+                 render();
+            }
+            else
+            {
+                 uint8_t length = (byte) 6;
+                 uint8_t data_packet[6] = {length,currentLine, 1,1,1,1};
+                 //getBluetoothManager().transmitMessage(0x03, 0x02, data_packet);
+                 getBluetoothManager().transmitMessage(0x03, 0x06, currentLine, 1, 1, 1, 1);
+            }
+        }
+      }
+      
+      
     }
     
-    
+ 
   render();
   
 }
@@ -467,123 +544,163 @@ void RSSState::loadNextPhrase(int currentLine){
 
 
 void RSSState::updateDisplay(long lastUpdateTime){
+  frameClock+=lastUpdateTime;
+  if(frameClock>=(1000/8)){
+    frameCounter++;
+    frameClock = 0;
+    if(frameCounter>7)
+      frameCounter = 0;
+  }
 
-  _screen->setTextWrap(false);
-  idleTime += lastUpdateTime;
-  if(idleTime>1500){
-    frameClock+=lastUpdateTime;
-    if(frameClock>=(1000/30)){
-      frameClock = 0;
-      scrollPoint+=2;
+  if(isLoading)
+  {
+    renderWheelGraphic(lastUpdateTime);
+   
+  }
+  else if(currentRSSMode ==  RSS_APP_MODE_LIST)
+  {
+    _screen->setTextWrap(false);
+    idleTime += lastUpdateTime;
+    if(idleTime>1500){
+      frameClock+=lastUpdateTime;
+      if(frameClock>=(1000/30)){
+        frameClock = 0;
+        scrollPoint+=2;
+      }
     }
-  }
+    
+    _screen->clearDisplay();
+    _screen->setTextSize(1);
+    switch (hilight_menu_id) {
+    case 0:
+      _screen->fillRect(0, 0, _screen->width(), _screen->height()/3, WHITE);
+      _screen->drawRect(0, _screen->height()/3, _screen->width(), _screen->height()/3, WHITE);
+      _screen->drawRect(0, (_screen->height()/3)*2, _screen->width(), _screen->height()/3, WHITE);
+      break;
+    case 1:
+      _screen->drawRect(0, 0, _screen->width(), _screen->height()/3, WHITE);
+      _screen->fillRect(0, _screen->height()/3, _screen->width(), _screen->height()/3, WHITE);
+      _screen->drawRect(0, (_screen->height()/3)*2, _screen->width(), _screen->height()/3, WHITE);
+      break;
+    case 2:
+      _screen->drawRect(0, 0, _screen->width(), _screen->height()/3, WHITE);
+      _screen->drawRect(0, _screen->height()/3, _screen->width(), _screen->height()/3, WHITE);
+      _screen->fillRect(0, (_screen->height()/3)*2, _screen->width(), _screen->height()/3, WHITE);
+      break;
+    } 
+    
+    int scrollOffset = 0;
   
-  _screen->clearDisplay();
-  _screen->setTextSize(1);
-  switch (hilight_menu_id) {
-  case 0:
-    _screen->fillRect(0, 0, _screen->width(), _screen->height()/3, WHITE);
-    _screen->drawRect(0, _screen->height()/3, _screen->width(), _screen->height()/3, WHITE);
-    _screen->drawRect(0, (_screen->height()/3)*2, _screen->width(), _screen->height()/3, WHITE);
-    break;
-  case 1:
-    _screen->drawRect(0, 0, _screen->width(), _screen->height()/3, WHITE);
-    _screen->fillRect(0, _screen->height()/3, _screen->width(), _screen->height()/3, WHITE);
-    _screen->drawRect(0, (_screen->height()/3)*2, _screen->width(), _screen->height()/3, WHITE);
-    break;
-  case 2:
-    _screen->drawRect(0, 0, _screen->width(), _screen->height()/3, WHITE);
-    _screen->drawRect(0, _screen->height()/3, _screen->width(), _screen->height()/3, WHITE);
-    _screen->fillRect(0, (_screen->height()/3)*2, _screen->width(), _screen->height()/3, WHITE);
-    break;
-  } 
-  
-  int scrollOffset = 0;
-
-  if(hilight_menu_id == 0)
-    _screen->setTextColor(BLACK);
-  else
-    _screen->setTextColor(WHITE);
-
-  if(top_menu_id<=8)
-  {
     if(hilight_menu_id == 0)
-          scrollOffset = scrollPoint;
+      _screen->setTextColor(BLACK);
     else
-         scrollOffset = 0;
-         
+      _screen->setTextColor(WHITE);
+  
+    if(top_menu_id<=8)
+    {
+      if(hilight_menu_id == 0)
+            scrollOffset = scrollPoint;
+      else
+           scrollOffset = 0;
+           
+      _screen->setCursor(6-scrollOffset,6);
+      _screen->println(main_menu[top_menu_id]);
+    }
+  
+    if(hilight_menu_id == 1)
+      _screen->setTextColor(BLACK);
+    else
+      _screen->setTextColor(WHITE);
+  
+    if(top_menu_id<=7)
+    {
+     if(hilight_menu_id == 1)
+            scrollOffset = scrollPoint;
+      else
+           scrollOffset = 0;
+      
+      _screen->setCursor(6-scrollOffset, (_screen->height()/3)+6);
+      _screen->println(main_menu[top_menu_id+1]);
+    }
+  
+    if(hilight_menu_id == 2)
+      _screen->setTextColor(BLACK);
+    else
+      _screen->setTextColor(WHITE);
+  
+    if(top_menu_id<=6)
+    {
+      
+          if(hilight_menu_id == 2)
+            scrollOffset = scrollPoint;
+      else
+           scrollOffset = 0;
+      
+      _screen->setCursor(6-scrollOffset, ((_screen->height()/3)*2)+6);
+      _screen->println(main_menu[top_menu_id+2]);
+    }
+    //Popup test
+    /*
+    _screen->fillRect(8, 8, _screen->width()-16, _screen->height()-16, BLACK);
+    _screen->fillRect(10, 10, _screen->width()-20, _screen->height()-20, WHITE);
+     _screen->setTextColor(BLACK);
+    _screen->setCursor(12, 12);
+    _screen->println("Error: Please");
+    _screen->setCursor(12, 22);
+    _screen->println("Connect BLE");*/
+    
+    _screen->display();
+  }
+  else if(currentRSSMode ==  RSS_APP_MODE_DETAILS)
+  {
+    /*
+    _screen->setTextWrap(false);
+    idleTime += lastUpdateTime;
+    if(idleTime>1500){
+      frameClock+=lastUpdateTime;
+      if(frameClock>=(1000/30)){
+        frameClock = 0;
+        scrollPoint+=2;
+      }
+    }*/
+    
+    _screen->clearDisplay();
+    _screen->setTextSize(1);
+    _screen->setTextColor(WHITE);
+    _screen->setTextWrap(false);
+    
+    int scrollOffset = 0;
+
+    _screen->drawRect(0, 0, _screen->width(), _screen->height()/3, WHITE);
+    _screen->drawRect(0, (_screen->height()/3), _screen->width(), (_screen->height()/3)*2, WHITE);
+
+    
+    
     _screen->setCursor(6-scrollOffset,6);
-    _screen->println(main_menu[top_menu_id]);
-  }
-
-  if(hilight_menu_id == 1)
-    _screen->setTextColor(BLACK);
-  else
-    _screen->setTextColor(WHITE);
-
-  if(top_menu_id<=7)
-  {
-   if(hilight_menu_id == 1)
-          scrollOffset = scrollPoint;
-    else
-         scrollOffset = 0;
+    _screen->println(rssTitle);
     
+    _screen->setTextWrap(true);
     _screen->setCursor(6-scrollOffset, (_screen->height()/3)+6);
-    _screen->println(main_menu[top_menu_id+1]);
-  }
+    _screen->println(rssDescription);
+    _screen->display();
 
-  if(hilight_menu_id == 2)
-    _screen->setTextColor(BLACK);
-  else
-    _screen->setTextColor(WHITE);
-
-  if(top_menu_id<=6)
-  {
-    
-        if(hilight_menu_id == 2)
-          scrollOffset = scrollPoint;
-    else
-         scrollOffset = 0;
-    
-    _screen->setCursor(6-scrollOffset, ((_screen->height()/3)*2)+6);
-    _screen->println(main_menu[top_menu_id+2]);
   }
-  //Popup test
-  /*
-  _screen->fillRect(8, 8, _screen->width()-16, _screen->height()-16, BLACK);
-  _screen->fillRect(10, 10, _screen->width()-20, _screen->height()-20, WHITE);
-   _screen->setTextColor(BLACK);
-  _screen->setCursor(12, 12);
-  _screen->println("Error: Please");
-  _screen->setCursor(12, 22);
-  _screen->println("Connect BLE");*/
-  
-  _screen->display();
-  
   
 }
 
 
 
 void RSSState::sync(){
-    if(getBluetoothManager().getState() == 4 || getBluetoothManager().getState() == 5)
+  if(getBluetoothManager().getState() == 4 || getBluetoothManager().getState() == 5)
   {
+      renderWheelGraphic(0);
       uint8_t length = (byte) 6;
       uint8_t data_packet[6] = {length,100,100,100,100,254};
       getBluetoothManager().transmitMessage(RSS_STATE_APP_ID, RSS_STATE_APP_ACTION_1, data_packet);
   }
   else
   {
-    _screen->clearDisplay();
-    _screen->setTextSize(1);
-    _screen->fillRect(8, 8, _screen->width()-16, _screen->height()-16, BLACK);
-    _screen->fillRect(10, 10, _screen->width()-20, _screen->height()-20, WHITE);
-    _screen->setTextColor(BLACK);
-    _screen->setCursor(12, 12);
-    _screen->println(F("Error: Please"));
-    _screen->setCursor(12, 22);
-    _screen->println(F("Connect Phone"));
-    _screen->display();
+      renderNoConnectionGraphic();
   }
 }
 

@@ -60,15 +60,21 @@ class BaseState{
     void renderLoadingWheel();
     
     const unsigned char getLoadingWheel();
-    
+    void renderWheelGraphic(long lastUpdateTime);
+    void renderNoConnectionGraphic();
+
     //Bluetooth manager access
     BluetoothManager getBluetoothManager();
     void setBluetoothManager(BluetoothManager *bleManager);
+    //Screen access
+    static Adafruit_SSD1306 getGlobalScreenRef();
+    static void setGlobalScreenRef(Adafruit_SSD1306 *screenRef);
     //Vars required
     Adafruit_SSD1306 *_screen;
     char *STATE_ID;
     boolean isLoading;
-    static const unsigned char *wheelAnimated[8];
+    //static const unsigned char *wheelAnimated[8];
+
     
     //Declaired helper functions
     void integerToBytes(long val, byte b[4]);

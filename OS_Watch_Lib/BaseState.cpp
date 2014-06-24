@@ -70,7 +70,8 @@ static const unsigned char load_wheel_8[] PROGMEM={
 
 static const unsigned char *wheelAnimated[8] = {load_wheel_1, load_wheel_2, load_wheel_3, load_wheel_4, load_wheel_5, load_wheel_6, load_wheel_7, load_wheel_8};
 
-
+static int frameCounter = 0;
+static int frameClock = 0;
 
 static stateChangeCallback changeRequestCallback;
 static boolean isDisplayDimmed = false;
@@ -82,6 +83,9 @@ char *STATE_ID = "";
 boolean isDirty = false;
 
 boolean isLoading = false;
+
+static Adafruit_SSD1306 *_screenRef = 0;
+
 
 
 BaseState::BaseState(Adafruit_SSD1306 *screen){
@@ -96,19 +100,19 @@ void BaseState::render(){
 }
 
 void BaseState::btnInterruptAction(boolean isDimmed){
-  Serial.println("Class btn action");
+  Serial.println(F("Class btn action"));
 }
 
 void BaseState::btnUpAction(boolean isDimmed){
-  Serial.println("Class btn Up");
+  Serial.println(F("Class btn Up"));
 }
 
 void BaseState::btnDownAction(boolean isDimmed){
-  Serial.println("Class btn Down");
+  Serial.println(F("Class btn Down"));
 }
 
 void BaseState::btnBackAction(boolean isDimmed){
-  Serial.println("Class btn Down");
+  Serial.println(F("Class btn Down"));
 }
 
 void BaseState::setStateChangeRequestCallback(stateChangeCallback f){
@@ -137,6 +141,43 @@ void BaseState::incomingMessageCallback(const struct ble_msg_attributes_value_ev
   
 }
 
+void BaseState::renderWheelGraphic(long lastUpdateTime){
+  if(_screenRef)
+  {
+    frameClock+=lastUpdateTime;
+    if(frameClock>=(1000/8)){
+      frameCounter++;
+      frameClock = 0;
+      if(frameCounter>7)
+        frameCounter = 0;
+    }
+    _screenRef->clearDisplay();
+    _screenRef->drawBitmap(56, 24,  wheelAnimated[frameCounter], 16, 16, 1);
+    _screenRef->display(); 
+  }
+}
+
+void BaseState::renderNoConnectionGraphic(){
+    _screenRef->clearDisplay();
+    _screenRef->setTextSize(1);
+    _screenRef->fillRect(8, 8, _screenRef->width()-16, _screenRef->height()-16, BLACK);
+    _screenRef->fillRect(10, 10, _screenRef->width()-20, _screenRef->height()-20, WHITE);
+    _screenRef->setTextColor(BLACK);
+    _screenRef->setCursor(12, 12);
+    _screenRef->println(F("Error: Please"));
+    _screenRef->setCursor(12, 22);
+    _screenRef->println(F("Connect Phone"));
+    _screenRef->display(); 
+}
+
+Adafruit_SSD1306 BaseState::getGlobalScreenRef(){
+  return *_screenRef;
+}
+void BaseState::setGlobalScreenRef(Adafruit_SSD1306 *screenRef){
+    _screenRef = screenRef;
+}
+
+
 void BaseState::updateDisplay(long lastUpdateTime){
   
 }
@@ -163,6 +204,8 @@ void BaseState::renderLoadingWheel(){
 const unsigned char BaseState::getLoadingWheel(){
   //return *wheelAnimated;
 }*/
+
+
 
 
 void BaseState::integerToBytes(long val, byte b[4]) {
